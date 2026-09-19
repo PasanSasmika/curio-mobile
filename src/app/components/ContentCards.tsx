@@ -6,19 +6,28 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { Content } from "../../../types/content";
 
 
 interface Props {
   item: Content;
-  onPress?: () => void;
 }
 
-export default function ContentCard({ item, onPress }: Props) {
+export default function ContentCard({ item }: Props) {
+  const openVideo = () => {
+    router.push({
+      pathname: "/video/[id]",
+      params: {
+        id: item.videoId,
+      },
+    });
+  };
+
   return (
     <TouchableOpacity
       activeOpacity={0.88}
-      onPress={onPress}
+      onPress={openVideo}
       className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white"
     >
       <Image

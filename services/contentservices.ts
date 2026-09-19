@@ -20,3 +20,17 @@ export const discoverContent = async (
 
   return response.data.data || [];
 };
+
+export const searchContent = async (
+  query: string
+): Promise<Content[]> => {
+  const response = await api.get("/content/search", {
+    params: {
+      q: query,
+      limit: 10,
+      order: "relevance",
+    },
+  });
+
+  return response.data.data || [];
+};

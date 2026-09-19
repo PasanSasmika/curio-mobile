@@ -11,9 +11,10 @@ import { useEffect, useState } from "react";
 
 import { Ionicons } from "@expo/vector-icons";
 import { Content } from "../../../types/content";
-import { getContent } from "../../../services/contentservices";
+import { getContent, searchContent } from "../../../services/contentservices";
 import InterestChip from "../components/InterestChip";
 import ContentCard from "../components/ContentCards";
+import SearchBar from "../components/SearchBar";
 
 
 const interests = [
@@ -26,6 +27,10 @@ const interests = [
 ];
 
 export default function HomeScreen() {
+
+const [searchQuery, setSearchQuery] = useState("");
+const [searching, setSearching] = useState(false);
+
   const [selectedInterest, setSelectedInterest] =
     useState("All");
 
@@ -69,6 +74,27 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  const handleSearch = async (query: string) => {
+  setSearchQuery(query);
+
+  if (!query.trim()) {
+    loadContent();
+    return;
+  }
+
+  try {
+    setSearching(true);
+
+    const results = await searchContent(query);
+
+    setContent(results);
+  } catch (error) {
+    console.log("Search failed:", error);
+  } finally {
+    setSearching(false);
+  }
+};
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
@@ -110,6 +136,17 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        <View className="px-5">
+  <SearchBar
+    value={searchQuery}
+    onChangeText={handleSearch}
+    onClear={() => {
+      setSearchQuery("");
+      loadContent();
+    }}
+  />
+</View>
 
         {/* Interests */}
         <View className="mb-6">

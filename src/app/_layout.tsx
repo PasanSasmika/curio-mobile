@@ -1,5 +1,3 @@
-// TypeScript does not resolve CSS side-effect imports without a declaration.
-// @ts-expect-error The bundler handles this stylesheet import at runtime.
 import "../global.css";
 
 import { Stack } from "expo-router";

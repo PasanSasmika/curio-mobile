@@ -4,16 +4,16 @@ import {
   ScrollView,
   SafeAreaView,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 
 import { useEffect, useState } from "react";
 
 import { Ionicons } from "@expo/vector-icons";
 import { Content } from "../../../types/content";
-import { api } from "../../../services/api";
+import { getContent } from "../../../services/contentservices";
 import InterestChip from "../components/InterestChip";
 import ContentCard from "../components/ContentCards";
-
 
 
 const interests = [
@@ -26,24 +26,34 @@ const interests = [
 ];
 
 export default function HomeScreen() {
-  const [selectedInterest, setSelectedInterest] = useState("All");
+  const [selectedInterest, setSelectedInterest] =
+    useState("All");
+
   const [content, setContent] = useState<Content[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
+
+  const [refreshing, setRefreshing] =
+    useState(false);
+
+  const [loading, setLoading] = useState(true);
 
   const loadContent = async () => {
     try {
-      const response = await api.get("/content", {
-  params:
-    selectedInterest === "All"
-      ? {}
-      : {
-          interest: selectedInterest,
-        },
-});
+      setLoading(true);
 
-      setContent(response.data.data || []);
+      const data = await getContent(
+        selectedInterest === "All"
+          ? undefined
+          : selectedInterest
+      );
+
+      setContent(data);
     } catch (error) {
-      console.log("Failed to load content:", error);
+      console.log(
+        "Failed to load content:",
+        error
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -101,7 +111,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Interest panel */}
+        {/* Interests */}
         <View className="mb-6">
           <View className="mb-3 px-5">
             <Text className="text-base font-bold text-[#172121]">
@@ -120,14 +130,18 @@ export default function HomeScreen() {
               <InterestChip
                 key={interest}
                 title={interest}
-                active={selectedInterest === interest}
-                onPress={() => setSelectedInterest(interest)}
+                active={
+                  selectedInterest === interest
+                }
+                onPress={() =>
+                  setSelectedInterest(interest)
+                }
               />
             ))}
           </ScrollView>
         </View>
 
-        {/* Content */}
+        {/* Feed */}
         <View className="px-5">
           <View className="mb-4 flex-row items-center">
             <View className="flex-1">
@@ -140,21 +154,40 @@ export default function HomeScreen() {
               </Text>
             </View>
 
-            <View className="rounded-full bg-primary-light px-3 py-1">
-              <Text className="text-xs font-semibold text-primary">
-                {content.length} videos
-              </Text>
-            </View>
+            {!loading && (
+              <View className="rounded-full bg-primary-light px-3 py-1">
+                <Text className="text-xs font-semibold text-primary">
+                  {content.length} videos
+                </Text>
+              </View>
+            )}
           </View>
 
-          {content.map((item) => (
-            <ContentCard
-              key={item.videoId}
-              item={item}
-            />
-          ))}
+          {/* Loading */}
+          {loading && (
+            <View className="items-center py-16">
+              <ActivityIndicator
+                size="large"
+                color="#199690"
+              />
 
-          {content.length === 0 && (
+              <Text className="mt-4 text-sm text-[#687474]">
+                Finding something useful...
+              </Text>
+            </View>
+          )}
+
+          {/* Content */}
+          {!loading &&
+            content.map((item) => (
+              <ContentCard
+                key={item.videoId}
+                item={item}
+              />
+            ))}
+
+          {/* Empty */}
+          {!loading && content.length === 0 && (
             <View className="items-center rounded-3xl bg-[#F8FAFA] px-6 py-12">
               <View className="mb-4 h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
                 <Ionicons
@@ -169,7 +202,7 @@ export default function HomeScreen() {
               </Text>
 
               <Text className="mt-2 text-center text-sm leading-5 text-[#687474]">
-                Choose an interest and discover useful
+                Go to Interests and discover some useful
                 content.
               </Text>
             </View>

@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Ionicons } from "@expo/vector-icons";
 import { Content } from "../../../types/content";
@@ -41,7 +41,12 @@ const [searching, setSearching] = useState(false);
 
   const [loading, setLoading] = useState(true);
 
+  // Only the latest request may update the list (avoids out-of-order results while typing)
+  const requestId = useRef(0);
+
   const loadContent = async () => {
+    const id = ++requestId.current;
+
     try {
       setLoading(true);
 
@@ -51,49 +56,68 @@ const [searching, setSearching] = useState(false);
           : selectedInterest
       );
 
-      setContent(data);
+      if (id === requestId.current) setContent(data);
     } catch (error) {
       console.log(
         "Failed to load content:",
         error
       );
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   };
 
+  const runSearch = async (query: string) => {
+    const id = ++requestId.current;
+
+    try {
+      setSearching(true);
+
+      const results = await searchContent(query);
+
+      if (id === requestId.current) {
+        setContent(results);
+        setLoading(false);
+      }
+    } catch (error) {
+      console.log("Search failed:", error);
+    } finally {
+      if (id === requestId.current) setSearching(false);
+    }
+  };
+
+  // Live search: runs (debounced) on every keystroke; empty query shows the interest feed
   useEffect(() => {
-    loadContent();
-  }, [selectedInterest]);
+    const query = searchQuery.trim();
+
+    if (!query) {
+      setSearching(false);
+      loadContent();
+      return;
+    }
+
+    const timer = setTimeout(() => runSearch(query), 400);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedInterest]);
 
   const refresh = async () => {
     setRefreshing(true);
 
-    await loadContent();
+    const query = searchQuery.trim();
+
+    if (query) await runSearch(query);
+    else await loadContent();
 
     setRefreshing(false);
   };
 
-  const handleSearch = async (query: string) => {
-  setSearchQuery(query);
+  // Search icon / keyboard submit: search immediately
+  const handleSearch = () => {
+    const query = searchQuery.trim();
 
-  if (!query.trim()) {
-    loadContent();
-    return;
-  }
-
-  try {
-    setSearching(true);
-
-    const results = await searchContent(query);
-
-    setContent(results);
-  } catch (error) {
-    console.log("Search failed:", error);
-  } finally {
-    setSearching(false);
-  }
-};
+    if (query) runSearch(query);
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -137,14 +161,13 @@ const [searching, setSearching] = useState(false);
           </View>
         </View>
 
-        <View className="px-5">
+  <View className="px-5">
   <SearchBar
     value={searchQuery}
-    onChangeText={handleSearch}
-    onClear={() => {
-      setSearchQuery("");
-      loadContent();
-    }}
+    onChangeText={setSearchQuery}
+    onSubmit={handleSearch}
+    loading={searching}
+    onClear={() => setSearchQuery("")}
   />
 </View>
 

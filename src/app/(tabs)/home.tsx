@@ -1,0 +1,181 @@
+import {
+  View,
+  Text,
+  ScrollView,
+  SafeAreaView,
+  RefreshControl,
+} from "react-native";
+
+import { useEffect, useState } from "react";
+
+import { Ionicons } from "@expo/vector-icons";
+import { Content } from "../../../types/content";
+import { api } from "../../../services/api";
+import InterestChip from "../components/InterestChip";
+import ContentCard from "../components/ContentCards";
+
+
+
+const interests = [
+  "All",
+  "React Native",
+  "Node.js",
+  "Express.js",
+  "MongoDB",
+  "Mobile Development",
+];
+
+export default function HomeScreen() {
+  const [selectedInterest, setSelectedInterest] = useState("All");
+  const [content, setContent] = useState<Content[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadContent = async () => {
+    try {
+      const response = await api.get("/content", {
+  params:
+    selectedInterest === "All"
+      ? {}
+      : {
+          interest: selectedInterest,
+        },
+});
+
+      setContent(response.data.data || []);
+    } catch (error) {
+      console.log("Failed to load content:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadContent();
+  }, [selectedInterest]);
+
+  const refresh = async () => {
+    setRefreshing(true);
+
+    await loadContent();
+
+    setRefreshing(false);
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-white">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingBottom: 110,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            tintColor="#199690"
+          />
+        }
+      >
+        {/* Header */}
+        <View className="px-5 pb-5 pt-4">
+          <View className="flex-row items-center">
+            <View className="flex-1">
+              <Text className="text-sm font-medium text-primary">
+                WATCHLATER
+              </Text>
+
+              <Text className="mt-1 text-3xl font-bold text-[#172121]">
+                Find something
+              </Text>
+
+              <Text className="text-3xl font-bold text-[#172121]">
+                worth watching.
+              </Text>
+            </View>
+
+            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary-light">
+              <Ionicons
+                name="play"
+                size={21}
+                color="#199690"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Interest panel */}
+        <View className="mb-6">
+          <View className="mb-3 px-5">
+            <Text className="text-base font-bold text-[#172121]">
+              Your interests
+            </Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+            }}
+          >
+            {interests.map((interest) => (
+              <InterestChip
+                key={interest}
+                title={interest}
+                active={selectedInterest === interest}
+                onPress={() => setSelectedInterest(interest)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Content */}
+        <View className="px-5">
+          <View className="mb-4 flex-row items-center">
+            <View className="flex-1">
+              <Text className="text-xl font-bold text-[#172121]">
+                For you
+              </Text>
+
+              <Text className="mt-1 text-sm text-[#687474]">
+                Fresh content based on your interests
+              </Text>
+            </View>
+
+            <View className="rounded-full bg-primary-light px-3 py-1">
+              <Text className="text-xs font-semibold text-primary">
+                {content.length} videos
+              </Text>
+            </View>
+          </View>
+
+          {content.map((item) => (
+            <ContentCard
+              key={item.videoId}
+              item={item}
+            />
+          ))}
+
+          {content.length === 0 && (
+            <View className="items-center rounded-3xl bg-[#F8FAFA] px-6 py-12">
+              <View className="mb-4 h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
+                <Ionicons
+                  name="sparkles-outline"
+                  size={26}
+                  color="#199690"
+                />
+              </View>
+
+              <Text className="text-center text-lg font-bold text-[#172121]">
+                Nothing here yet
+              </Text>
+
+              <Text className="mt-2 text-center text-sm leading-5 text-[#687474]">
+                Choose an interest and discover useful
+                content.
+              </Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

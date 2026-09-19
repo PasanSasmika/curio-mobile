@@ -15,9 +15,15 @@ import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Content } from "../../../types/content";
 import { api } from "../../../services/api";
+import { checkSavedContent, removeSavedContent, saveContent } from "../../../services/savedservices";
 
 
 export default function VideoDetailsScreen() {
+
+const [saved, setSaved] = useState(false);
+const [saving, setSaving] = useState(false);
+
+
   const { id } = useLocalSearchParams<{
     id: string;
   }>();
@@ -26,27 +32,57 @@ export default function VideoDetailsScreen() {
     null
   );
 
+  const toggleSaved = async () => {
+  if (!video || saving) return;
+
+  try {
+    setSaving(true);
+
+    if (saved) {
+      await removeSavedContent(video.videoId);
+      setSaved(false);
+    } else {
+      await saveContent(video);
+      setSaved(true);
+    }
+  } catch (error) {
+    console.log("Failed to update saved state:", error);
+  } finally {
+    setSaving(false);
+  }
+};
+
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadVideo = async () => {
-      try {
-        const response = await api.get("/content");
+ useEffect(() => {
+  const loadVideo = async () => {
+    try {
+      setLoading(true);
 
-        const foundVideo = response.data.data?.find(
-          (item: Content) => item.videoId === id
+      const response = await api.get("/content");
+
+      const foundVideo = response.data.data?.find(
+        (item: Content) => item.videoId === id
+      );
+
+      setVideo(foundVideo || null);
+
+      if (foundVideo) {
+        const isSaved = await checkSavedContent(
+          foundVideo.videoId
         );
 
-        setVideo(foundVideo || null);
-      } catch (error) {
-        console.log("Failed to load video:", error);
-      } finally {
-        setLoading(false);
+        setSaved(isSaved);
       }
-    };
+    } catch (error) {
+      console.log("Failed to load video:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadVideo();
-  }, [id]);
+  loadVideo();
+}, [id]);
 
   const openYouTube = async () => {
     if (!video) return;
@@ -161,16 +197,29 @@ export default function VideoDetailsScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.85}
-              className="h-14 w-14 items-center justify-center rounded-2xl border border-gray-200 bg-white"
-            >
-              <Ionicons
-                name="bookmark-outline"
-                size={22}
-                color="#199690"
-              />
-            </TouchableOpacity>
+           <TouchableOpacity
+  activeOpacity={0.85}
+  onPress={toggleSaved}
+  disabled={saving}
+  className={`h-14 w-14 items-center justify-center rounded-2xl ${
+    saved
+      ? "bg-primary"
+      : "border border-gray-200 bg-white"
+  }`}
+>
+  {saving ? (
+    <ActivityIndicator
+      size="small"
+      color={saved ? "#FFFFFF" : "#199690"}
+    />
+  ) : (
+    <Ionicons
+      name={saved ? "bookmark" : "bookmark-outline"}
+      size={22}
+      color={saved ? "#FFFFFF" : "#199690"}
+    />
+  )}
+</TouchableOpacity>
           </View>
 
           {/* Description */}

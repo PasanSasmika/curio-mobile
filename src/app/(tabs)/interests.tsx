@@ -8,114 +8,271 @@ import {
   ActivityIndicator,
 } from "react-native";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { Ionicons } from "@expo/vector-icons";
 import { Interest } from "../../../types/interest";
-import { getInterests } from "../../../services/interestService";
+import { getInterests, searchInterests } from "../../../services/interestService";
+import { getPreferences, updatePreferences } from "../../../services/preferencesService";
 import { discoverContent } from "../../../services/contentservices";
 
 
+
+
+
 export default function InterestsScreen() {
-  const [interests, setInterests] = useState<Interest[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [discovering, setDiscovering] = useState(false);
-  const [error, setError] = useState("");
-  const loadInterests = async () => {
-  try {
-    setLoading(true);
-    setError("");
+  const [interests, setInterests] =
+    useState<Interest[]>([]);
 
-    const data = await getInterests();
+  const [suggestions, setSuggestions] =
+    useState<Interest[]>([]);
 
-    console.log("INTERESTS:", data);
+  const [selected, setSelected] =
+    useState<string[]>([]);
 
-    setInterests(data);
-  } catch (error: any) {
-    console.log(
-      "Failed to load interests:",
-      error?.response?.data || error?.message || error
-    );
+  const [search, setSearch] =
+    useState("");
 
-    setError(
-      error?.response?.data?.message ||
-        error?.message ||
-        "Failed to load interests"
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+  const [loading, setLoading] =
+    useState(true);
+
+  const [searching, setSearching] =
+    useState(false);
+
+  const [discovering, setDiscovering] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  // --------------------------------------------------
+  // Load interests + preferences
+  // --------------------------------------------------
 
   useEffect(() => {
-    loadInterests();
+    loadData();
   }, []);
 
-  const toggleInterest = (name: string) => {
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const interestData =
+        await getInterests();
+
+      setInterests(interestData);
+
+      try {
+        const preferences =
+          await getPreferences();
+
+        setSelected(
+          preferences.interests || []
+        );
+      } catch (preferencesError) {
+        console.log(
+          "Failed to load preferences:",
+          preferencesError
+        );
+
+        setSelected([]);
+      }
+    } catch (error) {
+      console.log(
+        "Failed to load interests:",
+        error
+      );
+
+      setError(
+        "Couldn't load interests. Please check your connection."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --------------------------------------------------
+  // Search suggestions
+  // --------------------------------------------------
+
+  useEffect(() => {
+    const query = search.trim();
+
+    if (!query) {
+      setSuggestions([]);
+      setSearching(false);
+      return;
+    }
+
+    const timer = setTimeout(
+      async () => {
+        try {
+          setSearching(true);
+
+          const results =
+            await searchInterests(query);
+
+          setSuggestions(results);
+        } catch (error) {
+          console.log(
+            "Failed to search interests:",
+            error
+          );
+
+          setSuggestions([]);
+        } finally {
+          setSearching(false);
+        }
+      },
+      300
+    );
+
+    return () =>
+      clearTimeout(timer);
+  }, [search]);
+
+  // --------------------------------------------------
+  // Toggle selected interest
+  // --------------------------------------------------
+
+  const toggleInterest = (
+    name: string
+  ) => {
     setSelected((current) =>
       current.includes(name)
-        ? current.filter((item) => item !== name)
+        ? current.filter(
+            (item) => item !== name
+          )
         : [...current, name]
     );
   };
 
-  const filteredInterests = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  // --------------------------------------------------
+  // Select suggestion
+  // --------------------------------------------------
 
-    if (!query) {
-      return interests;
+  const selectSuggestion = (
+    name: string
+  ) => {
+    if (!selected.includes(name)) {
+      setSelected((current) => [
+        ...current,
+        name,
+      ]);
     }
 
-    return interests.filter((interest) =>
-      interest.name.toLowerCase().includes(query)
-    );
-  }, [interests, search]);
+    setSearch("");
+    setSuggestions([]);
+  };
 
-  const groupedInterests = useMemo(() => {
-    return filteredInterests.reduce(
-      (groups, interest) => {
-        if (!groups[interest.category]) {
-          groups[interest.category] = [];
-        }
+  // --------------------------------------------------
+  // Existing interest filtering
+  // --------------------------------------------------
 
-        groups[interest.category].push(interest);
+  const filteredInterests =
+    useMemo(() => {
+      const query =
+        search.trim().toLowerCase();
 
-        return groups;
-      },
-      {} as Record<string, Interest[]>
-    );
-  }, [filteredInterests]);
-
-  const handleDiscover = async () => {
-    if (selected.length === 0) {
-      return;
-    }
-
-    try {
-      setDiscovering(true);
-
-      for (const interest of selected) {
-        await discoverContent(interest);
+      if (!query) {
+        return interests;
       }
 
-      console.log("Content discovered successfully");
-    } catch (error) {
-      console.log("Failed to discover content:", error);
-    } finally {
-      setDiscovering(false);
-    }
-  };
+      return interests.filter(
+        (interest) =>
+          interest.name
+            .toLowerCase()
+            .includes(query)
+      );
+    }, [interests, search]);
+
+  // --------------------------------------------------
+  // Group existing interests
+  // --------------------------------------------------
+
+  const groupedInterests =
+    useMemo(() => {
+      return filteredInterests.reduce(
+        (groups, interest) => {
+          if (
+            !groups[interest.category]
+          ) {
+            groups[interest.category] = [];
+          }
+
+          groups[interest.category].push(
+            interest
+          );
+
+          return groups;
+        },
+        {} as Record<
+          string,
+          Interest[]
+        >
+      );
+    }, [filteredInterests]);
+
+  // --------------------------------------------------
+  // Discover content
+  // --------------------------------------------------
+
+  const handleDiscover =
+    async () => {
+      if (
+        selected.length === 0 ||
+        discovering
+      ) {
+        return;
+      }
+
+      try {
+        setDiscovering(true);
+
+        // Save selected interests
+        await updatePreferences(
+          selected
+        );
+
+        // Discover YouTube content
+        for (
+          const interest of selected
+        ) {
+          await discoverContent(
+            interest
+          );
+        }
+
+        console.log(
+          "Preferences and content updated successfully"
+        );
+      } catch (error) {
+        console.log(
+          "Failed to update preferences/content:",
+          error
+        );
+      } finally {
+        setDiscovering(false);
+      }
+    };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           padding: 20,
-          paddingBottom: 130,
+          paddingBottom: 140,
         }}
       >
+        {/* Header */}
+
         <Text className="text-sm font-medium text-primary">
           DISCOVER
         </Text>
@@ -125,10 +282,12 @@ export default function InterestsScreen() {
         </Text>
 
         <Text className="mt-2 text-sm leading-5 text-[#687474]">
-          Pick the topics you want Curio to discover for you.
+          Pick the topics you want Curio
+          to discover for you.
         </Text>
 
         {/* Search */}
+
         <View className="mt-6 flex-row items-center rounded-2xl border border-gray-100 bg-[#F8FAFA] px-4">
           <Ionicons
             name="search-outline"
@@ -139,14 +298,25 @@ export default function InterestsScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Search interests..."
+            placeholder="Search anything..."
             placeholderTextColor="#98A3A3"
+            autoCorrect={false}
+            returnKeyType="search"
             className="ml-3 h-14 flex-1 text-[15px] text-[#172121]"
           />
 
-          {search.length > 0 && (
+          {searching ? (
+            <ActivityIndicator
+              size="small"
+              color="#199690"
+            />
+          ) : search.length > 0 ? (
             <TouchableOpacity
-              onPress={() => setSearch("")}
+              onPress={() => {
+                setSearch("");
+                setSuggestions([]);
+              }}
+              activeOpacity={0.7}
             >
               <Ionicons
                 name="close-circle"
@@ -154,10 +324,93 @@ export default function InterestsScreen() {
                 color="#98A3A3"
               />
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
 
-        {/* Selected */}
+        {/* Search Suggestions */}
+
+        {search.trim().length > 0 &&
+          suggestions.length > 0 && (
+            <View className="mt-2 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+              <Text className="px-4 pb-2 pt-3 text-xs font-semibold uppercase tracking-wide text-[#98A3A3]">
+                Suggestions
+              </Text>
+
+              {suggestions.map(
+                (suggestion) => {
+                  const active =
+                    selected.includes(
+                      suggestion.name
+                    );
+
+                  return (
+                    <TouchableOpacity
+                      key={
+                        suggestion._id
+                      }
+                      onPress={() =>
+                        selectSuggestion(
+                          suggestion.name
+                        )
+                      }
+                      activeOpacity={0.75}
+                      className="flex-row items-center border-t border-gray-100 px-4 py-3.5"
+                    >
+                      <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary-light">
+                        <Ionicons
+                          name={
+                            suggestion.category ===
+                            "Technology"
+                              ? "code-slash-outline"
+                              : suggestion.category ===
+                                "Entertainment"
+                              ? "play-outline"
+                              : suggestion.category ===
+                                "Lifestyle"
+                              ? "compass-outline"
+                              : "sparkles-outline"
+                          }
+                          size={18}
+                          color="#199690"
+                        />
+                      </View>
+
+                      <View className="ml-3 flex-1">
+                        <Text className="text-sm font-semibold text-[#172121]">
+                          {
+                            suggestion.name
+                          }
+                        </Text>
+
+                        <Text className="mt-0.5 text-xs text-[#98A3A3]">
+                          {
+                            suggestion.category
+                          }
+                        </Text>
+                      </View>
+
+                      <Ionicons
+                        name={
+                          active
+                            ? "checkmark-circle"
+                            : "add-circle-outline"
+                        }
+                        size={22}
+                        color={
+                          active
+                            ? "#199690"
+                            : "#98A3A3"
+                        }
+                      />
+                    </TouchableOpacity>
+                  );
+                }
+              )}
+            </View>
+          )}
+
+        {/* Selected interests */}
+
         {selected.length > 0 && (
           <View className="mt-6">
             <View className="mb-3 flex-row items-center">
@@ -173,29 +426,39 @@ export default function InterestsScreen() {
             </View>
 
             <View className="flex-row flex-wrap">
-              {selected.map((name) => (
-                <TouchableOpacity
-                  key={name}
-                  onPress={() => toggleInterest(name)}
-                  className="mb-2 mr-2 flex-row items-center rounded-full bg-primary px-4 py-2.5"
-                >
-                  <Text className="text-sm font-semibold text-white">
-                    {name}
-                  </Text>
+              {selected.map(
+                (name) => (
+                  <TouchableOpacity
+                    key={name}
+                    onPress={() =>
+                      toggleInterest(
+                        name
+                      )
+                    }
+                    activeOpacity={0.8}
+                    className="mb-2 mr-2 flex-row items-center rounded-full bg-primary px-4 py-2.5"
+                  >
+                    <Text className="text-sm font-semibold text-white">
+                      {name}
+                    </Text>
 
-                  <Ionicons
-                    name="close"
-                    size={15}
-                    color="#FFFFFF"
-                    style={{ marginLeft: 6 }}
-                  />
-                </TouchableOpacity>
-              ))}
+                    <Ionicons
+                      name="close"
+                      size={15}
+                      color="#FFFFFF"
+                      style={{
+                        marginLeft: 6,
+                      }}
+                    />
+                  </TouchableOpacity>
+                )
+              )}
             </View>
           </View>
         )}
 
-        {/* Interests */}
+        {/* Existing interests */}
+
         <View className="mt-7">
           {loading ? (
             <View className="items-center py-16">
@@ -208,81 +471,124 @@ export default function InterestsScreen() {
                 Loading interests...
               </Text>
             </View>
+          ) : error ? (
+            <View className="items-center rounded-3xl bg-[#F8FAFA] px-6 py-14">
+              <View className="h-16 w-16 items-center justify-center rounded-2xl bg-[#FDECEC]">
+                <Ionicons
+                  name="cloud-offline-outline"
+                  size={30}
+                  color="#D9534F"
+                />
+              </View>
+
+              <Text className="mt-5 text-center text-lg font-bold text-[#172121]">
+                Couldn't load interests
+              </Text>
+
+              <Text className="mt-2 text-center text-sm leading-5 text-[#687474]">
+                {error}
+              </Text>
+
+              <TouchableOpacity
+                onPress={loadData}
+                activeOpacity={0.85}
+                className="mt-5 rounded-xl bg-primary px-5 py-3"
+              >
+                <Text className="font-semibold text-white">
+                  Try Again
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : (
-            Object.entries(groupedInterests).map(
-              ([category, items]) => (
-                <View key={category} className="mb-7">
+            Object.entries(
+              groupedInterests
+            ).map(
+              ([
+                category,
+                items,
+              ]) => (
+                <View
+                  key={category}
+                  className="mb-7"
+                >
                   <Text className="mb-3 text-base font-bold text-[#172121]">
                     {category}
                   </Text>
 
                   <View className="flex-row flex-wrap">
-                    {items.map((interest) => {
-                      const active = selected.includes(
-                        interest.name
-                      );
+                    {items.map(
+                      (interest) => {
+                        const active =
+                          selected.includes(
+                            interest.name
+                          );
 
-                      return (
-                        <TouchableOpacity
-                          key={interest._id}
-                          onPress={() =>
-                            toggleInterest(interest.name)
-                          }
-                          activeOpacity={0.8}
-                          className={`mb-2 mr-2 rounded-full border px-4 py-2.5 ${
-                            active
-                              ? "border-primary bg-primary"
-                              : "border-gray-200 bg-white"
-                          }`}
-                        >
-                          <Text
-                            className={`text-sm font-medium ${
+                        return (
+                          <TouchableOpacity
+                            key={
+                              interest._id
+                            }
+                            onPress={() =>
+                              toggleInterest(
+                                interest.name
+                              )
+                            }
+                            activeOpacity={
+                              0.8
+                            }
+                            className={`mb-2 mr-2 rounded-full border px-4 py-2.5 ${
                               active
-                                ? "text-white"
-                                : "text-[#687474]"
+                                ? "border-primary bg-primary"
+                                : "border-gray-200 bg-white"
                             }`}
                           >
-                            {interest.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                            <Text
+                              className={`text-sm font-medium ${
+                                active
+                                  ? "text-white"
+                                  : "text-[#687474]"
+                              }`}
+                            >
+                              {
+                                interest.name
+                              }
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      }
+                    )}
                   </View>
                 </View>
               )
             )
           )}
-          {!loading && error && (
-  <View className="items-center py-16">
-    <Ionicons
-      name="cloud-offline-outline"
-      size={40}
-      color="#D9534F"
-    />
-
-    <Text className="mt-4 text-center text-base font-bold text-[#172121]">
-      Couldn't load interests
-    </Text>
-
-    <Text className="mt-2 text-center text-sm text-[#687474]">
-      {error}
-    </Text>
-  </View>
-)}
         </View>
       </ScrollView>
 
       {/* Discover button */}
+
       {selected.length > 0 && (
         <View className="absolute bottom-20 left-5 right-5">
           <TouchableOpacity
-            onPress={handleDiscover}
+            onPress={
+              handleDiscover
+            }
             disabled={discovering}
             activeOpacity={0.85}
-            className="h-14 flex-row items-center justify-center rounded-2xl bg-primary"
+            className={`h-14 flex-row items-center justify-center rounded-2xl ${
+              discovering
+                ? "bg-[#8BC9C6]"
+                : "bg-primary"
+            }`}
           >
             {discovering ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <>
+                <ActivityIndicator color="#FFFFFF" />
+
+                <Text className="ml-2 text-base font-bold text-white">
+                  Discovering...
+                </Text>
+              </>
             ) : (
               <>
                 <Ionicons

@@ -5,118 +5,291 @@ import {
   SafeAreaView,
   RefreshControl,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
+import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+
 import { Content } from "../../../types/content";
-import { getContent, searchContent } from "../../../services/contentservices";
+
+import {
+  getContent,
+  searchContent,
+} from "../../../services/contentservices";
+
 import InterestChip from "../components/InterestChip";
 import ContentCard from "../components/ContentCards";
 import SearchBar from "../components/SearchBar";
 
+import { getPreferences } from "../../../services/preferencesService";
 
-const interests = [
-  "All",
-  "React Native",
-  "Node.js",
-  "Express.js",
-  "MongoDB",
-  "Mobile Development",
-];
+const ITEMS_PER_PAGE = 10;
+const MAX_PAGES = 6;
 
 export default function HomeScreen() {
+  const [interests, setInterests] =
+    useState<string[]>([]);
 
-const [searchQuery, setSearchQuery] = useState("");
-const [searching, setSearching] = useState(false);
+  const [searchQuery, setSearchQuery] =
+    useState("");
+
+  const [searching, setSearching] =
+    useState(false);
 
   const [selectedInterest, setSelectedInterest] =
     useState("All");
 
-  const [content, setContent] = useState<Content[]>([]);
+  const [content, setContent] =
+    useState<Content[]>([]);
 
   const [refreshing, setRefreshing] =
     useState(false);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  // Only the latest request may update the list (avoids out-of-order results while typing)
+  const [currentPage, setCurrentPage] =
+    useState(1);
+
+  const [totalPages, setTotalPages] =
+    useState(1);
+
   const requestId = useRef(0);
 
-  const loadContent = async () => {
+  // --------------------------------------------------
+  // Load user's saved interests
+  // --------------------------------------------------
+
+  const loadPreferences = async () => {
+    try {
+      const preferences =
+        await getPreferences();
+
+      setInterests(
+        preferences.interests || []
+      );
+    } catch (error) {
+      console.log(
+        "Failed to load preferences:",
+        error
+      );
+    }
+  };
+
+  // --------------------------------------------------
+  // Load paginated content
+  // --------------------------------------------------
+
+  const loadContent = async (
+    page = 1,
+    refresh = false
+  ) => {
     const id = ++requestId.current;
 
     try {
       setLoading(true);
 
-      const data = await getContent(
-        selectedInterest === "All"
-          ? undefined
-          : selectedInterest
+      const response =
+        await getContent(
+          selectedInterest === "All"
+            ? undefined
+            : selectedInterest,
+          page,
+          ITEMS_PER_PAGE,
+          refresh
+        );
+
+      if (id !== requestId.current) {
+        return;
+      }
+
+      setContent(response.data);
+
+      setCurrentPage(
+        response.pagination.page
       );
 
-      if (id === requestId.current) setContent(data);
+      setTotalPages(
+        Math.min(
+          response.pagination.totalPages,
+          MAX_PAGES
+        )
+      );
     } catch (error) {
       console.log(
         "Failed to load content:",
         error
       );
     } finally {
-      if (id === requestId.current) setLoading(false);
+      if (id === requestId.current) {
+        setLoading(false);
+      }
     }
   };
 
-  const runSearch = async (query: string) => {
+  // --------------------------------------------------
+  // Search content
+  // --------------------------------------------------
+
+  const runSearch = async (
+    query: string
+  ) => {
     const id = ++requestId.current;
 
     try {
       setSearching(true);
+      setLoading(true);
 
-      const results = await searchContent(query);
+      const response =
+        await searchContent(query);
 
+      if (id !== requestId.current) {
+        return;
+      }
+
+      setContent(response.data);
+
+      setCurrentPage(1);
+
+      setTotalPages(1);
+    } catch (error) {
+      console.log(
+        "Search failed:",
+        error
+      );
+    } finally {
       if (id === requestId.current) {
-        setContent(results);
+        setSearching(false);
         setLoading(false);
       }
-    } catch (error) {
-      console.log("Search failed:", error);
-    } finally {
-      if (id === requestId.current) setSearching(false);
     }
   };
 
-  // Live search: runs (debounced) on every keystroke; empty query shows the interest feed
-  useEffect(() => {
-    const query = searchQuery.trim();
+  // --------------------------------------------------
+  // Initial preferences
+  // --------------------------------------------------
 
-    if (!query) {
-      setSearching(false);
-      loadContent();
+  useEffect(() => {
+    loadPreferences();
+  }, []);
+
+  // --------------------------------------------------
+  // Reload preferences when returning from Discover
+  // --------------------------------------------------
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPreferences();
+    }, [])
+  );
+
+  // --------------------------------------------------
+  // Load page 1 when interest changes
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
       return;
     }
 
-    const timer = setTimeout(() => runSearch(query), 400);
+    setCurrentPage(1);
 
-    return () => clearTimeout(timer);
-  }, [searchQuery, selectedInterest]);
+    loadContent(1, false);
+  }, [selectedInterest]);
+
+  // --------------------------------------------------
+  // Refresh
+  // --------------------------------------------------
 
   const refresh = async () => {
     setRefreshing(true);
 
-    const query = searchQuery.trim();
+    try {
+      await loadPreferences();
 
-    if (query) await runSearch(query);
-    else await loadContent();
+      const query =
+        searchQuery.trim();
 
-    setRefreshing(false);
+      if (query) {
+        await runSearch(query);
+      } else {
+        setCurrentPage(1);
+
+        /*
+         * refresh=true tells the backend to fetch
+         * newer YouTube uploads before returning
+         * page 1.
+         */
+        await loadContent(1, true);
+      }
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  // Search icon / keyboard submit: search immediately
-  const handleSearch = () => {
-    const query = searchQuery.trim();
+  // --------------------------------------------------
+  // Change page
+  // --------------------------------------------------
 
-    if (query) runSearch(query);
+  const changePage = async (
+    page: number
+  ) => {
+    if (
+      page < 1 ||
+      page > totalPages ||
+      page === currentPage ||
+      loading
+    ) {
+      return;
+    }
+
+    /*
+     * Scroll position will naturally remain near
+     * the feed. We first show loading and then
+     * replace the current page.
+     */
+
+    await loadContent(
+      page,
+      false
+    );
+  };
+
+  // --------------------------------------------------
+  // Search button / keyboard
+  // --------------------------------------------------
+
+  const handleSearch = () => {
+    const query =
+      searchQuery.trim();
+
+    if (!query) {
+      setCurrentPage(1);
+      loadContent(1, false);
+      return;
+    }
+
+    runSearch(query);
+  };
+
+  // --------------------------------------------------
+  // Clear search
+  // --------------------------------------------------
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+
+    setCurrentPage(1);
+
+    loadContent(1, false);
   };
 
   return (
@@ -124,7 +297,7 @@ const [searching, setSearching] = useState(false);
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: 110,
+          paddingBottom: 120,
         }}
         refreshControl={
           <RefreshControl
@@ -135,11 +308,12 @@ const [searching, setSearching] = useState(false);
         }
       >
         {/* Header */}
+
         <View className="px-5 pb-5 pt-4">
           <View className="flex-row items-center">
             <View className="flex-1">
               <Text className="text-sm font-medium text-primary">
-                WATCHLATER
+                CURIO
               </Text>
 
               <Text className="mt-1 text-3xl font-bold text-[#172121]">
@@ -161,17 +335,20 @@ const [searching, setSearching] = useState(false);
           </View>
         </View>
 
-  <View className="px-5">
-  <SearchBar
-    value={searchQuery}
-    onChangeText={setSearchQuery}
-    onSubmit={handleSearch}
-    loading={searching}
-    onClear={() => setSearchQuery("")}
-  />
-</View>
+        {/* Search */}
+
+        <View className="px-5">
+          <SearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmit={handleSearch}
+            loading={searching}
+            onClear={handleClearSearch}
+          />
+        </View>
 
         {/* Interests */}
+
         <View className="mb-6">
           <View className="mb-3 px-5">
             <Text className="text-base font-bold text-[#172121]">
@@ -179,38 +356,65 @@ const [searching, setSearching] = useState(false);
             </Text>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 20,
-            }}
-          >
-            {interests.map((interest) => (
-              <InterestChip
-                key={interest}
-                title={interest}
-                active={
-                  selectedInterest === interest
-                }
-                onPress={() =>
-                  setSelectedInterest(interest)
-                }
-              />
-            ))}
-          </ScrollView>
+          {interests.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingHorizontal: 20,
+              }}
+            >
+              {["All", ...interests].map(
+                (interest) => (
+                  <InterestChip
+                    key={interest}
+                    title={interest}
+                    active={
+                      selectedInterest ===
+                      interest
+                    }
+                    onPress={() => {
+                      setSearchQuery("");
+
+                      setCurrentPage(1);
+
+                      setSelectedInterest(
+                        interest
+                      );
+                    }}
+                  />
+                )
+              )}
+            </ScrollView>
+          ) : (
+            <View className="px-5">
+              <View className="rounded-2xl bg-[#F8FAFA] px-4 py-4">
+                <Text className="text-sm text-[#687474]">
+                  Choose some interests to
+                  personalize your feed.
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Feed */}
+
         <View className="px-5">
           <View className="mb-4 flex-row items-center">
             <View className="flex-1">
               <Text className="text-xl font-bold text-[#172121]">
-                For you
+                {searchQuery.trim()
+                  ? "Search results"
+                  : selectedInterest === "All"
+                  ? "For you"
+                  : selectedInterest}
               </Text>
 
               <Text className="mt-1 text-sm text-[#687474]">
-                Fresh content based on your interests
+                {searchQuery.trim()
+                  ? `Results for "${searchQuery.trim()}"`
+                  : "Fresh content based on your interests"}
               </Text>
             </View>
 
@@ -224,6 +428,7 @@ const [searching, setSearching] = useState(false);
           </View>
 
           {/* Loading */}
+
           {loading && (
             <View className="items-center py-16">
               <ActivityIndicator
@@ -238,6 +443,7 @@ const [searching, setSearching] = useState(false);
           )}
 
           {/* Content */}
+
           {!loading &&
             content.map((item) => (
               <ContentCard
@@ -247,26 +453,155 @@ const [searching, setSearching] = useState(false);
             ))}
 
           {/* Empty */}
-          {!loading && content.length === 0 && (
-            <View className="items-center rounded-3xl bg-[#F8FAFA] px-6 py-12">
-              <View className="mb-4 h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
-                <Ionicons
-                  name="sparkles-outline"
-                  size={26}
-                  color="#199690"
-                />
+
+          {!loading &&
+            content.length === 0 && (
+              <View className="items-center rounded-3xl bg-[#F8FAFA] px-6 py-12">
+                <View className="mb-4 h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
+                  <Ionicons
+                    name={
+                      searchQuery.trim()
+                        ? "search-outline"
+                        : "sparkles-outline"
+                    }
+                    size={26}
+                    color="#199690"
+                  />
+                </View>
+
+                <Text className="text-center text-lg font-bold text-[#172121]">
+                  {searchQuery.trim()
+                    ? "No videos found"
+                    : "Nothing here yet"}
+                </Text>
+
+                <Text className="mt-2 text-center text-sm leading-5 text-[#687474]">
+                  {searchQuery.trim()
+                    ? "Try searching for another topic or keyword."
+                    : "Go to Interests and discover some useful content."}
+                </Text>
               </View>
+            )}
 
-              <Text className="text-center text-lg font-bold text-[#172121]">
-                Nothing here yet
-              </Text>
+          {/* Pagination */}
 
-              <Text className="mt-2 text-center text-sm leading-5 text-[#687474]">
-                Go to Interests and discover some useful
-                content.
-              </Text>
-            </View>
-          )}
+          {!loading &&
+            !searchQuery.trim() &&
+            totalPages > 1 && (
+              <View className="mt-7 mb-4">
+                <View className="flex-row items-center justify-center">
+                  {/* Previous */}
+
+                  <TouchableOpacity
+                    onPress={() =>
+                      changePage(
+                        currentPage - 1
+                      )
+                    }
+                    disabled={
+                      currentPage === 1
+                    }
+                    activeOpacity={0.75}
+                    className={`mr-2 h-10 w-10 items-center justify-center rounded-xl border ${
+                      currentPage === 1
+                        ? "border-gray-100 bg-[#F8FAFA]"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <Ionicons
+                      name="chevron-back"
+                      size={18}
+                      color={
+                        currentPage === 1
+                          ? "#C5CCCC"
+                          : "#172121"
+                      }
+                    />
+                  </TouchableOpacity>
+
+                  {/* Pages 1–6 */}
+
+                  {Array.from(
+                    {
+                      length: Math.min(
+                        totalPages,
+                        MAX_PAGES
+                      ),
+                    },
+                    (_, index) =>
+                      index + 1
+                  ).map((page) => {
+                    const active =
+                      page ===
+                      currentPage;
+
+                    return (
+                      <TouchableOpacity
+                        key={page}
+                        onPress={() =>
+                          changePage(
+                            page
+                          )
+                        }
+                        activeOpacity={0.75}
+                        className={`mx-1 h-10 w-10 items-center justify-center rounded-xl ${
+                          active
+                            ? "bg-primary"
+                            : "border border-gray-200 bg-white"
+                        }`}
+                      >
+                        <Text
+                          className={`text-sm font-semibold ${
+                            active
+                              ? "text-white"
+                              : "text-[#687474]"
+                          }`}
+                        >
+                          {page}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  {/* Next */}
+
+                  <TouchableOpacity
+                    onPress={() =>
+                      changePage(
+                        currentPage + 1
+                      )
+                    }
+                    disabled={
+                      currentPage ===
+                      totalPages
+                    }
+                    activeOpacity={0.75}
+                    className={`ml-2 h-10 w-10 items-center justify-center rounded-xl border ${
+                      currentPage ===
+                      totalPages
+                        ? "border-gray-100 bg-[#F8FAFA]"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={
+                        currentPage ===
+                        totalPages
+                          ? "#C5CCCC"
+                          : "#172121"
+                      }
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <Text className="mt-3 text-center text-xs text-[#98A3A3]">
+                  Page {currentPage} of{" "}
+                  {totalPages}
+                </Text>
+              </View>
+            )}
         </View>
       </ScrollView>
     </SafeAreaView>

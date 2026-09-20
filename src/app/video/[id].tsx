@@ -1,5 +1,4 @@
 import {
-  SafeAreaView,
   View,
   Text,
   ScrollView,
@@ -8,6 +7,7 @@ import {
   Linking,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useEffect, useState } from "react";
 import { useLocalSearchParams, router } from "expo-router";
@@ -90,7 +90,7 @@ const [saving, setSaving] = useState(false);
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+      <SafeAreaView className="flex-1 items-center justify-center bg-[#fffff9]">
         <ActivityIndicator
           size="large"
           color="#199690"

@@ -1,11 +1,11 @@
 import {
-  SafeAreaView,
   View,
   Text,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
@@ -48,7 +48,7 @@ export default function SavedScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-[#fffff9]">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{

@@ -1,11 +1,14 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomTabBarProps } from "expo-router/build/react-navigation/bottom-tabs";
 
 const TAB_BAR_WIDTH = 335;
 
 function CenteredTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+
   return (
     <View
       pointerEvents="box-none"
@@ -13,7 +16,7 @@ function CenteredTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         position: "absolute",
         left: 0,
         right: 0,
-        bottom: 18,
+        bottom: insets.bottom + 12,
         alignItems: "center",
       }}
     >

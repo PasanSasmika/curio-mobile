@@ -1,4 +1,5 @@
-import {View,Text,ScrollView,SafeAreaView,RefreshControl,ActivityIndicator,TouchableOpacity,} from "react-native";
+import {View,Text,ScrollView,RefreshControl,ActivityIndicator,TouchableOpacity,} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {useCallback,useEffect,useRef,useState,} from "react";
 import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -282,7 +283,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#f5f3eb]">
+    <SafeAreaView className="flex-1 bg-[#fffff9]">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{

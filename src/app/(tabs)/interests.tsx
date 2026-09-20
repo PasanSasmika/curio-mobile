@@ -22,8 +22,6 @@ import { discoverContent } from "../../../services/contentservices";
 
 
 
-
-
 export default function InterestsScreen() {
   const [interests, setInterests] =
     useState<Interest[]>([]);

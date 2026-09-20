@@ -15,12 +15,20 @@ import {
 } from "react";
 
 import { Ionicons } from "@expo/vector-icons";
+
 import { Interest } from "../../../types/interest";
-import { getInterests, searchInterests } from "../../../services/interestService";
-import { getPreferences, updatePreferences } from "../../../services/preferencesService";
+
+import {
+  getInterests,
+  searchInterests,
+} from "../../../services/interestService";
+
+import {
+  getPreferences,
+  updatePreferences,
+} from "../../../services/preferencesService";
+
 import { discoverContent } from "../../../services/contentservices";
-
-
 
 export default function InterestsScreen() {
   const [interests, setInterests] =
@@ -95,18 +103,25 @@ export default function InterestsScreen() {
   };
 
   // --------------------------------------------------
-  // Search suggestions
+  // Search YouTube-powered suggestions
   // --------------------------------------------------
 
   useEffect(() => {
     const query = search.trim();
 
-    if (!query) {
+    /*
+     * Don't call the API for one-character searches.
+     */
+    if (query.length < 2) {
       setSuggestions([]);
       setSearching(false);
       return;
     }
 
+    /*
+     * Wait until the user pauses typing before
+     * calling the backend.
+     */
     const timer = setTimeout(
       async () => {
         try {
@@ -118,7 +133,7 @@ export default function InterestsScreen() {
           setSuggestions(results);
         } catch (error) {
           console.log(
-            "Failed to search interests:",
+            "Failed to search YouTube suggestions:",
             error
           );
 
@@ -127,7 +142,7 @@ export default function InterestsScreen() {
           setSearching(false);
         }
       },
-      300
+      500
     );
 
     return () =>
@@ -151,7 +166,7 @@ export default function InterestsScreen() {
   };
 
   // --------------------------------------------------
-  // Select suggestion
+  // Select YouTube suggestion
   // --------------------------------------------------
 
   const selectSuggestion = (
@@ -325,13 +340,13 @@ export default function InterestsScreen() {
           ) : null}
         </View>
 
-        {/* Search Suggestions */}
+        {/* YouTube Suggestions */}
 
-        {search.trim().length > 0 &&
+        {search.trim().length >= 2 &&
           suggestions.length > 0 && (
             <View className="mt-2 overflow-hidden rounded-2xl border border-gray-100 bg-white">
               <Text className="px-4 pb-2 pt-3 text-xs font-semibold uppercase tracking-wide text-[#98A3A3]">
-                Suggestions
+                From YouTube
               </Text>
 
               {suggestions.map(
@@ -354,38 +369,34 @@ export default function InterestsScreen() {
                       activeOpacity={0.75}
                       className="flex-row items-center border-t border-gray-100 px-4 py-3.5"
                     >
+                      {/* Icon */}
+
                       <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary-light">
                         <Ionicons
-                          name={
-                            suggestion.category ===
-                            "Technology"
-                              ? "code-slash-outline"
-                              : suggestion.category ===
-                                "Entertainment"
-                              ? "play-outline"
-                              : suggestion.category ===
-                                "Lifestyle"
-                              ? "compass-outline"
-                              : "sparkles-outline"
-                          }
+                          name="logo-youtube"
                           size={18}
                           color="#199690"
                         />
                       </View>
 
+                      {/* Suggestion */}
+
                       <View className="ml-3 flex-1">
-                        <Text className="text-sm font-semibold text-[#172121]">
+                        <Text
+                          numberOfLines={2}
+                          className="text-sm font-semibold leading-5 text-[#172121]"
+                        >
                           {
                             suggestion.name
                           }
                         </Text>
 
                         <Text className="mt-0.5 text-xs text-[#98A3A3]">
-                          {
-                            suggestion.category
-                          }
+                          YouTube
                         </Text>
                       </View>
+
+                      {/* Selected state */}
 
                       <Ionicons
                         name={
@@ -404,6 +415,42 @@ export default function InterestsScreen() {
                   );
                 }
               )}
+            </View>
+          )}
+
+        {/* No YouTube results */}
+
+        {search.trim().length >= 2 &&
+          !searching &&
+          suggestions.length === 0 && (
+            <View className="mt-2 rounded-2xl bg-[#F8FAFA] px-4 py-3">
+              <Text className="text-sm text-[#687474]">
+                No YouTube suggestions found.
+                You can still use your search
+                topic as an interest.
+              </Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  selectSuggestion(
+                    search.trim()
+                  )
+                }
+                activeOpacity={0.8}
+                className="mt-3 flex-row items-center"
+              >
+                <View className="h-8 w-8 items-center justify-center rounded-lg bg-primary-light">
+                  <Ionicons
+                    name="add"
+                    size={18}
+                    color="#199690"
+                  />
+                </View>
+
+                <Text className="ml-3 text-sm font-semibold text-primary">
+                  Add "{search.trim()}"
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 

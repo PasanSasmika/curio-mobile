@@ -282,7 +282,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-[#f5f3eb]">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{

@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, View } from "react-native";
-import type { BottomTabBarProps } from "expo-router/build/react-navigation/bottom-tabs";
+import { BottomTabBarProps } from "expo-router/build/react-navigation/bottom-tabs";
 
 const TAB_BAR_WIDTH = 335;
 
@@ -43,6 +43,7 @@ function CenteredTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               target: route.key,
               canPreventDefault: true,
             });
+
             if (!focused && !event.defaultPrevented) {
               navigation.navigate(route.name, route.params);
             }
@@ -52,11 +53,15 @@ function CenteredTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             <Pressable
               key={route.key}
               onPress={onPress}
-              style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
               {options.tabBarIcon?.({
                 focused,
-                color: focused ? "#172121" : "#D5DADA",
+                color: focused ? "#FFFFFF" : "#D5DADA",
                 size: 25,
               })}
             </Pressable>
@@ -78,24 +83,11 @@ export default function TabLayout() {
         name="home"
         options={{
           tabBarIcon: ({ focused }) => (
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: focused
-                  ? "#FFFFFF"
-                  : "transparent",
-              }}
-            >
-              <Ionicons
-                name={focused ? "home" : "home-outline"}
-                size={25}
-                color={focused ? "#172121" : "#D5DADA"}
-              />
-            </View>
+            <Ionicons
+              name={focused ? "home" : "home-outline"}
+              size={25}
+              color={focused ? "#FFFFFF" : "#D5DADA"}
+            />
           ),
         }}
       />
@@ -105,24 +97,11 @@ export default function TabLayout() {
         name="interests"
         options={{
           tabBarIcon: ({ focused }) => (
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: focused
-                  ? "#FFFFFF"
-                  : "transparent",
-              }}
-            >
-              <Ionicons
-                name={focused ? "reader" : "reader-outline"}
-                size={25}
-                color={focused ? "#172121" : "#D5DADA"}
-              />
-            </View>
+            <Ionicons
+              name={focused ? "reader" : "reader-outline"}
+              size={25}
+              color={focused ? "#FFFFFF" : "#D5DADA"}
+            />
           ),
         }}
       />
@@ -132,51 +111,11 @@ export default function TabLayout() {
         name="saved"
         options={{
           tabBarIcon: ({ focused }) => (
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: focused
-                  ? "#FFFFFF"
-                  : "transparent",
-              }}
-            >
-              <Ionicons
-                name={focused ? "heart" : "heart-outline"}
-                size={26}
-                color={focused ? "#172121" : "#D5DADA"}
-              />
-            </View>
-          ),
-        }}
-      />
-
-      {/* MORE */}
-      <Tabs.Screen
-        name="more"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: focused
-                  ? "#FFFFFF"
-                  : "transparent",
-              }}
-            >
-              <Ionicons
-                name={focused ? "grid" : "grid-outline"}
-                size={25}
-                color={focused ? "#172121" : "#D5DADA"}
-              />
-            </View>
+            <Ionicons
+              name={focused ? "heart" : "heart-outline"}
+              size={26}
+              color={focused ? "#FFFFFF" : "#D5DADA"}
+            />
           ),
         }}
       />

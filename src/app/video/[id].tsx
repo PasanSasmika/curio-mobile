@@ -14,7 +14,7 @@ import { useLocalSearchParams, router } from "expo-router";
 
 import { Ionicons } from "@expo/vector-icons";
 import { Content } from "../../../types/content";
-import { api } from "../../../services/api";
+import { getContentById } from "../../../services/contentservices";
 import { checkSavedContent, removeSavedContent, saveContent } from "../../../services/savedservices";
 
 
@@ -59,11 +59,7 @@ const [saving, setSaving] = useState(false);
     try {
       setLoading(true);
 
-      const response = await api.get("/content");
-
-      const foundVideo = response.data.data?.find(
-        (item: Content) => item.videoId === id
-      );
+      const foundVideo = await getContentById(id);
 
       setVideo(foundVideo || null);
 

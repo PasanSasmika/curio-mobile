@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Content } from "../../../types/content";
 
 import {
+  ContentSort,
   getContent,
   searchContent,
 } from "../../../services/contentservices";
@@ -33,6 +34,12 @@ import { getPreferences } from "../../../services/preferencesService";
 
 const ITEMS_PER_PAGE = 10;
 const MAX_PAGES = 6;
+
+const SORT_FILTERS: { label: string; value: ContentSort }[] = [
+  { label: "New", value: "new" },
+  { label: "Most viewed", value: "viewed" },
+  { label: "Recently added", value: "recent" },
+];
 
 export default function HomeScreen() {
   const [interests, setInterests] =
@@ -61,6 +68,9 @@ export default function HomeScreen() {
 
   const [totalPages, setTotalPages] =
     useState(1);
+
+  const [sort, setSort] =
+    useState<ContentSort>("new");
 
   const requestId = useRef(0);
 
@@ -104,7 +114,8 @@ export default function HomeScreen() {
             : selectedInterest,
           page,
           ITEMS_PER_PAGE,
-          refresh
+          refresh,
+          sort
         );
 
       if (id !== requestId.current) {
@@ -203,7 +214,7 @@ export default function HomeScreen() {
     setCurrentPage(1);
 
     loadContent(1, false);
-  }, [selectedInterest]);
+  }, [selectedInterest, sort]);
 
   // --------------------------------------------------
   // Refresh
@@ -397,6 +408,29 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {/* Sort filters */}
+
+        {!searchQuery.trim() && (
+          <View className="mb-4">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingHorizontal: 20,
+              }}
+            >
+              {SORT_FILTERS.map((filter) => (
+                <InterestChip
+                  key={filter.value}
+                  title={filter.label}
+                  active={sort === filter.value}
+                  onPress={() => setSort(filter.value)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Feed */}
 

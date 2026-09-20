@@ -16,11 +16,25 @@ export interface ContentResponse {
   pagination: ContentPagination;
 }
 
+export type ContentSort = "new" | "viewed" | "recent";
+
+export const getContentById = async (
+  id: string
+): Promise<Content | null> => {
+  try {
+    const response = await api.get(`/content/${id}`);
+    return response.data.data || null;
+  } catch {
+    return null;
+  }
+};
+
 export const getContent = async (
   interest?: string,
   page: number = 1,
   limit: number = 10,
-  refresh: boolean = false
+  refresh: boolean = false,
+  sort: ContentSort = "new"
 ): Promise<ContentResponse> => {
   const response = await api.get("/content", {
     params: {
@@ -28,6 +42,7 @@ export const getContent = async (
       page,
       limit,
       refresh,
+      sort,
     },
   });
 

@@ -1,66 +1,182 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Pressable, View } from "react-native";
+import type { BottomTabBarProps } from "expo-router/build/react-navigation/bottom-tabs";
+
+const TAB_BAR_WIDTH = 335;
+
+function CenteredTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  return (
+    <View
+      pointerEvents="box-none"
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 18,
+        alignItems: "center",
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          width: TAB_BAR_WIDTH,
+          height: 72,
+          borderRadius: 40,
+          paddingHorizontal: 10,
+          alignItems: "center",
+          backgroundColor: "#172121",
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+        }}
+      >
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const focused = state.index === index;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!focused && !event.defaultPrevented) {
+              navigation.navigate(route.name, route.params);
+            }
+          };
+
+          return (
+            <Pressable
+              key={route.key}
+              onPress={onPress}
+              style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+            >
+              {options.tabBarIcon?.({
+                focused,
+                color: focused ? "#172121" : "#D5DADA",
+                size: 25,
+              })}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
 
 export default function TabLayout() {
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: false,
-
-        tabBarStyle: {
-          position: "absolute",
-          bottom: 18,
-          left: 20,
-          right: 20,
-          height: 68,
-          borderRadius: 24,
-          backgroundColor: "#172121",
-          borderTopWidth: 0,
-          paddingTop: 10,
-          paddingBottom: 10,
-          elevation: 8,
-        },
-
-        tabBarActiveTintColor: "#FFFFFF",
-        tabBarInactiveTintColor: "#8E9B9B",
-      }}
+      tabBar={(props) => <CenteredTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
+      {/* HOME */}
       <Tabs.Screen
         name="home"
         options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "home" : "home-outline"}
-              size={22}
-              color={color}
-            />
+          tabBarIcon: ({ focused }) => (
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: focused
+                  ? "#FFFFFF"
+                  : "transparent",
+              }}
+            >
+              <Ionicons
+                name={focused ? "home" : "home-outline"}
+                size={25}
+                color={focused ? "#172121" : "#D5DADA"}
+              />
+            </View>
           ),
         }}
       />
 
+      {/* INTERESTS */}
       <Tabs.Screen
         name="interests"
         options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "compass" : "compass-outline"}
-              size={23}
-              color={color}
-            />
+          tabBarIcon: ({ focused }) => (
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: focused
+                  ? "#FFFFFF"
+                  : "transparent",
+              }}
+            >
+              <Ionicons
+                name={focused ? "reader" : "reader-outline"}
+                size={25}
+                color={focused ? "#172121" : "#D5DADA"}
+              />
+            </View>
           ),
         }}
       />
 
+      {/* SAVED */}
       <Tabs.Screen
         name="saved"
         options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "bookmark" : "bookmark-outline"}
-              size={22}
-              color={color}
-            />
+          tabBarIcon: ({ focused }) => (
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: focused
+                  ? "#FFFFFF"
+                  : "transparent",
+              }}
+            >
+              <Ionicons
+                name={focused ? "heart" : "heart-outline"}
+                size={26}
+                color={focused ? "#172121" : "#D5DADA"}
+              />
+            </View>
+          ),
+        }}
+      />
+
+      {/* MORE */}
+      <Tabs.Screen
+        name="more"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: focused
+                  ? "#FFFFFF"
+                  : "transparent",
+              }}
+            >
+              <Ionicons
+                name={focused ? "grid" : "grid-outline"}
+                size={25}
+                color={focused ? "#172121" : "#D5DADA"}
+              />
+            </View>
           ),
         }}
       />

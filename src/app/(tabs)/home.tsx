@@ -1,31 +1,9 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  SafeAreaView,
-  RefreshControl,
-  ActivityIndicator,
-  TouchableOpacity,
-} from "react-native";
-
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
+import {View,Text,ScrollView,SafeAreaView,RefreshControl,ActivityIndicator,TouchableOpacity,} from "react-native";
+import {useCallback,useEffect,useRef,useState,} from "react";
 import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-
 import { Content } from "../../../types/content";
-
-import {
-  ContentSort,
-  getContent,
-  searchContent,
-} from "../../../services/contentservices";
-
+import {ContentSort,getContent,searchContent,} from "../../../services/contentservices";
 import InterestChip from "../components/InterestChip";
 import ContentCard from "../components/ContentCards";
 import SearchBar from "../components/SearchBar";

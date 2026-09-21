@@ -3,27 +3,28 @@ import {
   Text,
   Image,
   TouchableOpacity,
+  Dimensions,
 } from "react-native";
-
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+
+const { width } = Dimensions.get("window");
+
 const PRIMARY = "#199690";
+const PRIMARY_DARK = "#0E6B66";
 
 const pages = [
   {
-    title: "Discover what interests you",
-    description:
-      "Tell Curio what you're interested in and discover useful videos from YouTube based on the topics you care about.",
-    icon: "sparkles-outline" as const,
+    title: "Discover what sparks\nyour curiosity",
+    description: "Find useful YouTube videos tailored to the topics you care about",
   },
   {
-    title: "Save it for your free time",
-    description:
-      "Found something useful but don't have time right now? Save it in Curio and come back to it whenever you're ready.",
-    icon: "bookmark-outline" as const,
+    title: "Save it for later",
+    description: "Keep valuable content and return whenever you're ready to learn",
   },
 ];
 
@@ -33,89 +34,113 @@ export default function OnboardingScreen() {
   const page = pages[currentPage];
   const isLastPage = currentPage === pages.length - 1;
 
-const handleNext = async () => {
-  if (!isLastPage) {
-    setCurrentPage((prev) => prev + 1);
-    return;
-  }
+  const handleNext = async () => {
+    if (!isLastPage) {
+      setCurrentPage((prev) => prev + 1);
+      return;
+    }
 
-  await AsyncStorage.setItem(
-    "@curio_has_seen_onboarding",
-    "true"
-  );
-
-  router.replace("/(tabs)/home");
-};
+    await AsyncStorage.setItem("@curio_has_seen_onboarding", "true");
+    router.replace("/(tabs)/home");
+  };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 px-6">
-        {/* Logo */}
-        <View className="items-center pt-16">
-          <Image
-            source={require("../../assets/images/splash-icon.png")}
-            className="h-24 w-48"
-            resizeMode="contain"
-          />
-        </View>
-
-        {/* Illustration */}
-        <View className="mt-16 items-center">
-          <View className="h-32 w-32 items-center justify-center rounded-[40px] bg-[#E8F7F5]">
-            <Ionicons
-              name={page.icon}
-              size={58}
-              color={PRIMARY}
+    <View className="flex-1 bg-white">
+      <SafeAreaView className="flex-1">
+        <View className="flex-1 px-6">
+          {/* Logo as central image */}
+          <View className="flex-1 items-center justify-center pt-6">
+            <Image
+              source={require("../../assets/images/splash-icon.png")}
+              style={{
+                width: width * 0.72,
+                height: width * 0.72,
+              }}
+              resizeMode="contain"
             />
           </View>
-        </View>
 
-        {/* Content */}
-        <View className="mt-12 items-center px-4">
-          <Text className="text-center text-[30px] font-bold leading-9 text-[#172121]">
-            {page.title}
-          </Text>
-
-          <Text className="mt-5 text-center text-[16px] leading-6 text-[#687474]">
-            {page.description}
-          </Text>
-        </View>
-
-        {/* Bottom */}
-        <View className="mt-auto pb-8">
-          {/* Page indicators */}
-          <View className="mb-7 flex-row justify-center">
-            {pages.map((_, index) => (
-              <View
-                key={index}
-                className={`mx-1 h-2 rounded-full ${
-                  index === currentPage
-                    ? "w-7 bg-primary"
-                    : "w-2 bg-[#D8E3E3]"
-                }`}
-              />
-            ))}
-          </View>
-
-          {/* Button */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleNext}
-            className="h-14 flex-row items-center justify-center rounded-2xl bg-primary"
-          >
-            <Text className="text-[16px] font-bold text-white">
-              {isLastPage ? "Get Started" : "Continue"}
+          {/* Content */}
+          <View className="pb-6">
+            <Text className="text-center text-[28px] font-bold leading-[34px] text-[#111827]">
+              {page.title}
             </Text>
 
-            <Ionicons
-              name="arrow-forward"
-              size={20}
-              color="#FFFFFF"
-              style={{ marginLeft: 8 }}
-            />
-          </TouchableOpacity>
+            <Text className="mt-3 text-center text-[15px] leading-6 text-[#6B7280] px-4">
+              {page.description}
+            </Text>
+          </View>
+
+          {/* Unique bottom indicator + button area */}
+          <View className="pb-10">
+            {/* Custom indicator inspired by the reference */}
+            <View className="mb-8 flex-row items-center justify-between px-2">
+              {/* Left dots */}
+              <View className="flex-row items-center gap-1.5">
+                {pages.map((_, index) => (
+                  <View
+                    key={index}
+                    className="rounded-full"
+                    style={{
+                      width: index === currentPage ? 18 : 6,
+                      height: 6,
+                      backgroundColor:
+                        index === currentPage ? "#111827" : "#D1D5DB",
+                    }}
+                  />
+                ))}
+              </View>
+
+              {/* Right numbered circle */}
+              <View className="relative">
+                {/* Curved line effect (simple version) */}
+                <View
+                  className="absolute -left-8 top-1/2 h-0.5 w-8"
+                  style={{ backgroundColor: "#111827", opacity: 0.15 }}
+                />
+                <View
+                  className="h-12 w-12 items-center justify-center rounded-full"
+                  style={{ backgroundColor: "#111827" }}
+                >
+                  <Text className="text-[16px] font-bold text-white">
+                    {currentPage + 1}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Gradient Continue button */}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={handleNext}
+              className="overflow-hidden rounded-2xl"
+            >
+              <LinearGradient
+                colors={[PRIMARY, PRIMARY_DARK]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  height: 56,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 16,
+                }}
+              >
+                <Text className="text-[16px] font-semibold text-white">
+                  {isLastPage ? "Get Started" : "Continue"}
+                </Text>
+                <Ionicons
+                  name="arrow-forward"
+                  size={18}
+                  color="#FFFFFF"
+                  style={{ marginLeft: 8 }}
+                />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }

@@ -17,7 +17,6 @@ const MAX_PAGES = 6;
 const SORT_FILTERS: { label: string; value: ContentSort }[] = [
   { label: "New", value: "new" },
   { label: "Most viewed", value: "viewed" },
-  { label: "Recently added", value: "recent" },
 ];
 
 export default function HomeScreen() {
